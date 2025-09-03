@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1635,11 +1635,11 @@ static int msm_anlg_cdc_pa_gain_get(struct snd_kcontrol *kcontrol,
 		if (ear_pa_gain == 0x00) {
 			ucontrol->value.integer.value[0] = 3;
 		} else if (ear_pa_gain == 0x01) {
-			ucontrol->value.integer.value[0] = 2;
+			ucontrol->value.integer.value[1] = 2;
 		} else if (ear_pa_gain == 0x02) {
-			ucontrol->value.integer.value[0] = 1;
+			ucontrol->value.integer.value[2] = 1;
 		} else if (ear_pa_gain == 0x03) {
-			ucontrol->value.integer.value[0] = 0;
+			ucontrol->value.integer.value[3] = 0;
 		} else {
 			dev_err(codec->dev,
 				"%s: ERROR: Unsupported Ear Gain = 0x%x\n",
@@ -1661,6 +1661,7 @@ static int msm_anlg_cdc_pa_gain_get(struct snd_kcontrol *kcontrol,
 			return -EINVAL;
 		}
 	}
+	ucontrol->value.integer.value[0] = ear_pa_gain;
 	dev_dbg(codec->dev, "%s: ear_pa_gain = 0x%x\n", __func__, ear_pa_gain);
 	return 0;
 }
@@ -3676,7 +3677,6 @@ static const struct sdm660_cdc_reg_mask_val
 	{MSM89XX_PMIC_ANALOG_RX_COM_OCP_COUNT, 0xFF, 0xFF},
 };
 
-
 static void msm_anlg_cdc_codec_init_reg(struct snd_soc_codec *codec)
 {
 	u32 i;
@@ -3809,12 +3809,11 @@ static int msm_anlg_cdc_device_down(struct snd_soc_codec *codec)
 	}
 	msm_anlg_cdc_boost_off(codec);
 	sdm660_cdc_priv->hph_mode = NORMAL_MODE;
-
-	/* 40ms to allow boost to discharge */
-	msleep(40);
 	/* Disable PA to avoid pop during codec bring up */
 	snd_soc_update_bits(codec, MSM89XX_PMIC_ANALOG_RX_HPH_CNP_EN,
 			0x30, 0x00);
+	/* 40ms to allow boost to discharge */
+	msleep(40);
 	snd_soc_update_bits(codec, MSM89XX_PMIC_ANALOG_SPKR_DRV_CTL,
 			0x80, 0x00);
 	snd_soc_write(codec,

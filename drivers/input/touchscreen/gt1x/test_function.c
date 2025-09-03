@@ -922,7 +922,7 @@ static s32 _save_testing_data(char *save_test_data_dir, int test_types)
 		WARNING("memory error!");
 		return MEMORY_ERR;
 	}
-	fp = fopen("/data/misc/touch/hlt.csv", "a+");
+	fp = fopen("/data/vendor/misc/touch/hlt.csv", "a+");
 	if (NULL == fp) {
 		WARNING("open %s failed!", save_test_data_dir);
 		free(data);
@@ -1162,7 +1162,7 @@ static s32 _save_test_result_data(char *save_test_data_dir, int test_types, u8 *
 		return MEMORY_ERR;
 	}
 	pr_err("before fopen patch = %s\n",save_test_data_dir);
-	fp = fopen("/data/misc/touch/hlt.csv", "a+");
+	fp = fopen("/data/vendor/misc/touch/hlt.csv", "a+");
 	if (NULL == fp) {
 		WARNING("open %s failed!", save_test_data_dir);
 		free(data);

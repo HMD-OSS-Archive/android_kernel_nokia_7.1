@@ -346,9 +346,9 @@ unsigned char FT8716_TestItem_RawDataTest(bool * bTestResult)
     bIncludeKey = g_stCfg_FT8716_BasicThreshold.bRawDataTest_VKey_Check;
 
         if (NULL == pfile)
-            pfile = filp_open("/data/misc/touch/touch_data.txt", O_TRUNC|O_CREAT|O_RDWR, 0664);
+            pfile = filp_open("/data/vendor/misc/touch/touch_data.txt", O_TRUNC|O_CREAT|O_RDWR, 0664);
         if (IS_ERR(pfile)){
-            pr_err("[focal] error occured while opening file /data/misc/touch/touch_data.txt.\n");
+            pr_err("[focal] error occured while opening file /data/vendor/misc/touch/touch_data.txt.\n");
             return -1;
         }
         else {

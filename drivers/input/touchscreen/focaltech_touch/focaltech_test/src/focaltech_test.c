@@ -54,7 +54,7 @@
 // Define the configuration file storage directory
 //#define FTS_INI_FILE_PATH "/mnt/sdcard/"
 #define FTS_INI_FILE_PATH "/system/vendor/etc/"
-#define FTS_TEST_DATA_PATH "/data/misc/touch/"
+#define FTS_TEST_DATA_PATH "/data/vendor/misc/touch/"
 
 #define FTS_TEST_BUFFER_SIZE        80*1024
 #define FTS_TEST_PRINT_SIZE     128

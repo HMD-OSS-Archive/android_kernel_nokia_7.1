@@ -9983,6 +9983,7 @@ struct msm_camera_i2c_reg_array s5k5e9_drg_aux_res1_recover[]=
 //CTL ++
 struct msm_camera_i2c_reg_array s5k2l8_ctl_main_res0_recover[]=
 {
+	{0x0100, 0x0000, 0x0000}, \
 	{0x6028, 0x4000, 0x0000}, \
 	{0x6010, 0x0001, 0x0BB8}, \
 	{0x6214, 0xF970, 0x0000}, \
@@ -11311,6 +11312,7 @@ struct msm_camera_i2c_reg_array s5k2l8_ctl_main_res0_recover[]=
 };
 struct msm_camera_i2c_reg_array s5k2l8_ctl_main_res1_recover[]=
 {
+	{0x0100, 0x0000, 0x0000}, \
 	{0x6028, 0x4000, 0x0000}, \
 	{0x6010, 0x0001, 0x0BB8}, \
 	{0x6214, 0xF970, 0x0000}, \
@@ -12639,7 +12641,8 @@ struct msm_camera_i2c_reg_array s5k2l8_ctl_main_res1_recover[]=
 };
 struct msm_camera_i2c_reg_array s5k2l8_ctl_main_res2_recover[]=
 {
-    {0x6028, 0x4000, 0x0000}, \
+	{0x0100, 0x0000, 0x0000}, \
+	{0x6028, 0x4000, 0x0000}, \
 	{0x6010, 0x0001, 0x0BB8}, \
 	{0x6214, 0xF970, 0x0000}, \
 	{0x6218, 0xF150, 0x0000}, \

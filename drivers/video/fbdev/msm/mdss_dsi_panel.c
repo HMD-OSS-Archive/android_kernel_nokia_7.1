@@ -2105,6 +2105,40 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			//SW4-HL-Display-ShowLCMAndBacklightStatus-00+{_20160304
 			if (!(strnstr(saved_command_line, "androidboot.fihmode=2", strlen(saved_command_line))))
 			{
+				//SW4-HL-Display-C1NO-3148-00+{_20180508
+				if (ctrl->panel_data.panel_info.panel_id == FIH_ILI7807E_1080P_VIDEO_PANEL)
+				{
+					if (ctrl->mipi_term_resistor_04h_cmds.cmd_cnt)
+					{
+						pr_debug("[HL]%s, %d: START to send mipi_term_resistor_04h_cmds ...\n", __func__, __LINE__);
+						len = mdss_dsi_panel_cmds_send(ctrl, &ctrl->mipi_term_resistor_04h_cmds, CMD_REQ_COMMIT);
+						pr_debug("[HL]%s, %d: END to send mipi_term_resistor_04h_cmds\n", __func__, __LINE__);
+					}
+					else if (ctrl->mipi_term_resistor_14h_cmds.cmd_cnt)
+					{
+						pr_debug("[HL]%s, %d: START to send mipi_term_resistor_14h_cmds ...\n", __func__, __LINE__);
+						len = mdss_dsi_panel_cmds_send(ctrl, &ctrl->mipi_term_resistor_14h_cmds, CMD_REQ_COMMIT);
+						pr_debug("[HL]%s, %d: END to send mipi_term_resistor_14h_cmds\n", __func__, __LINE__);
+					}
+					else if (ctrl->mipi_term_resistor_24h_cmds.cmd_cnt)
+					{
+						pr_debug("[HL]%s, %d: START to send mipi_term_resistor_24h_cmds ...\n", __func__, __LINE__);
+						len = mdss_dsi_panel_cmds_send(ctrl, &ctrl->mipi_term_resistor_24h_cmds, CMD_REQ_COMMIT);
+						pr_debug("[HL]%s, %d: END to send mipi_term_resistor_24h_cmds\n", __func__, __LINE__);
+					}
+					else if (ctrl->mipi_term_resistor_34h_cmds.cmd_cnt)
+					{
+						pr_debug("[HL]%s, %d: START to send mipi_term_resistor_34h_cmds ...\n", __func__, __LINE__);
+						len = mdss_dsi_panel_cmds_send(ctrl, &ctrl->mipi_term_resistor_34h_cmds, CMD_REQ_COMMIT);
+						pr_debug("[HL]%s, %d: END to send mipi_term_resistor_34h_cmds\n", __func__, __LINE__);
+					}								
+					else
+					{					
+						pr_err("[HL]%s, %d: NOOOOOOOOOOOOOOOOOOOOOOOOOOOOO to send mipi term resistor cmdpage cmds ...\n", __func__, __LINE__);
+					}					
+				}
+				//SW4-HL-Display-C1NO-3148-00+}_20180508
+
 				if (ctrl->switch_cmdpage_cmds.cmd_cnt)
 				{
 					len = mdss_dsi_panel_cmds_send(ctrl, &ctrl->switch_cmdpage_cmds, CMD_REQ_COMMIT);
@@ -4880,6 +4914,17 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->bist_mode_off_cmds,
 		"fih,bist-mode-off-command", "fih,bist-mode-off-command-state");
 	//SW4-HL-Display-FixRedScreenWhileShutdownBacklighLed-00+}_20170614
+
+	//SW4-HL-Display-C1NO-3148-00+{_20180508
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->mipi_term_resistor_04h_cmds,
+		"fih,mipi-termination-resistor-04h-command", "fih,mipi-termination-resistor-04h-command-state");	
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->mipi_term_resistor_14h_cmds,
+		"fih,mipi-termination-resistor-14h-command", "fih,mipi-termination-resistor-14h-command-state");	
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->mipi_term_resistor_24h_cmds,
+		"fih,mipi-termination-resistor-24h-command", "fih,mipi-termination-resistor-24h-command-state");	
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->mipi_term_resistor_34h_cmds,
+		"fih,mipi-termination-resistor-34h-command", "fih,mipi-termination-resistor-34h-command-state");	
+	//SW4-HL-Display-C1NO-3148-00+}_20180508
 
 	//SW4-HL-Display-C1NO-3148-00+{_20180508
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->mipi_term_resistor_04h_cmds,

@@ -331,12 +331,12 @@
 		];
 
 		qcom,mdss-dsi-cabc-still-command = [
-			39 00 00 00 00 00 02 FF 10	
+			39 00 00 00 00 00 02 FF 10
 			39 01 00 00 00 00 02 55 02
 		];
 
 		qcom,mdss-dsi-cabc-moving-command = [
-			39 00 00 00 00 00 02 FF 10	
+			39 00 00 00 00 00 02 FF 10
 			39 01 00 00 00 00 02 55 03
 		];
 
@@ -346,22 +346,22 @@
 		qcom,mdss-dsi-cabc-moving-command-state = "dsi_hs_mode";
 
 		qcom,mdss-dsi-cabc-off-command-BeforeInit = [
-			39 01 00 00 00 00 02 FF 10		
+			39 01 00 00 00 00 02 FF 10
 			39 01 00 00 00 00 02 55 00
 		];
 
 		qcom,mdss-dsi-cabc-ui-command-BeforeInit = [
-			39 01 00 00 00 00 02 FF 10		
+			39 01 00 00 00 00 02 FF 10
 			39 01 00 00 00 00 02 55 01
 		];
 
 		qcom,mdss-dsi-cabc-still-command-BeforeInit = [
-			39 01 00 00 00 00 02 FF 10		
+			39 01 00 00 00 00 02 FF 10
 			39 01 00 00 00 00 02 55 02
 		];
 
 		qcom,mdss-dsi-cabc-moving-command-BeforeInit = [
-			39 01 00 00 00 00 02 FF 10		
+			39 01 00 00 00 00 02 FF 10
 			39 01 00 00 00 00 02 55 03
 		];
 

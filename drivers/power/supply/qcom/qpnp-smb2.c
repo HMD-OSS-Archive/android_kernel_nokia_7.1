@@ -207,6 +207,11 @@ static int __weak_chg_icl_ua = 500000;
 module_param_named(
 	weak_chg_icl_ua, __weak_chg_icl_ua, int, S_IRUSR | S_IWUSR);
 
+static int __try_sink_enabled = 1;
+module_param_named(
+	try_sink_enabled, __try_sink_enabled, int, 0600
+);
+
 /* Bobihlee - C1N-667 - Create a node to on/off otg */
 static struct smb2 *mChip = NULL;
 char fih_otg_disable_mode = 0; // add for OTG FREQ
@@ -382,7 +387,7 @@ int  jeita_full_capacity_get_status(struct smb_charger *chg)
 	}
 
 	prop.intval = 0;
-	rc = smblib_get_prop_batt_temp(chg, &prop);
+	rc = smblib_get_prop_from_bms(chg, POWER_SUPPLY_PROP_TEMP, &prop);
 	if(rc < 0) {
 		pr_err("Cannot read battery capacity in jeita_full_capacity_status\n");
 		return JEITA_FULL_CAP_NONE;
@@ -437,9 +442,53 @@ ssize_t jeita_full_capacity_show(struct device *dev, struct device_attribute *at
 static DEVICE_ATTR(jeita_full_capacity, 0644, jeita_full_capacity_show, jeita_full_capacity_store);
 // add for H/L temp charging limit reached UI }}
 
+// FIHTDC, IdaChiang, add for LCM status {{
+// 1 = screen savor ON, Ambient display ON
+// 0 = Normal LCM ON
+static ssize_t fih_lcm_status_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct smb2 *chip = dev_get_drvdata(dev);
+	struct smb_charger *chg = &chip->chg;
+	bool lcm_status;
+	
+	lcm_status =  chg->is_ambient_display;
+	pr_info("fih_lcm_status_show = %x\n", lcm_status);
+	
+	return sprintf(buf, "%d\n", lcm_status);
+}
+
+static ssize_t fih_lcm_status_store(struct device *dev,
+		struct device_attribute *attr, const char
+		*buf, size_t size)
+{
+	struct smb2 *chip = dev_get_drvdata(dev);
+	struct smb_charger *chg = &chip->chg;
+	int intval =0;
+
+	sscanf(buf, "%d", &intval);
+
+	if(intval !=0 && intval !=1){
+		pr_info("%s:Invalid argument:%s\n", __func__, buf);
+		return -EINVAL;
+	}
+	if(intval == 1)
+		chg->is_ambient_display = true;
+	else
+		chg->is_ambient_display = false;
+	pr_err("[%s] fih_lcm_status:%x\n", __func__, chg->is_ambient_display);
+
+	return size;
+}
+
+static DEVICE_ATTR(lcm_status, 0644, fih_lcm_status_show, fih_lcm_status_store);
+
+
+// FIHTDC, IdaChiang, add for LCM status }}
+
 #define MAX_STEP_CHG_ENTRIES 24  //8*3 =24 
-#define MICRO_1P5A	1500000
-#define MICRO_P1A	100000
+#define MICRO_1P5A		1500000
+#define MICRO_P1A		100000
 #define OTG_DEFAULT_DEGLITCH_TIME_MS	50
 #define MIN_WD_BARK_TIME		16
 #define DEFAULT_WD_BARK_TIME		64
@@ -571,6 +620,9 @@ static int smb2_parse_dt(struct smb2 *chip)
 					&chg->otg_delay_ms);
 	if (rc < 0)
 		chg->otg_delay_ms = OTG_DEFAULT_DEGLITCH_TIME_MS;
+
+	chg->fcc_stepper_mode = of_property_read_bool(node,
+					"qcom,fcc-stepping-enable");
 
 	chg->disable_wipower = of_property_read_bool(node, "qcom,disable-wipower");
 
@@ -1200,6 +1252,7 @@ static int smb2_init_usb_main_psy(struct smb2 *chip)
  *************************/
 
 static enum power_supply_property smb2_dc_props[] = {
+	POWER_SUPPLY_PROP_INPUT_SUSPEND,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
@@ -1216,6 +1269,9 @@ static int smb2_dc_get_prop(struct power_supply *psy,
 	int rc = 0;
 
 	switch (psp) {
+	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
+		val->intval = get_effective_result(chg->dc_suspend_votable);
+		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		rc = smblib_get_prop_dc_present(chg, val);
 		break;
@@ -1250,6 +1306,10 @@ static int smb2_dc_set_prop(struct power_supply *psy,
 	int rc = 0;
 
 	switch (psp) {
+	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
+		rc = vote(chg->dc_suspend_votable, WBC_VOTER,
+				(bool)val->intval, 0);
+		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		rc = smblib_set_prop_dc_current_max(chg, val);
 		break;
@@ -1337,6 +1397,9 @@ static enum power_supply_property smb2_batt_props[] = {
 	POWER_SUPPLY_PROP_RERUN_AICL,
 	POWER_SUPPLY_PROP_DP_DM,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
+	POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE,
+	POWER_SUPPLY_PROP_CHARGE_FULL,
+	POWER_SUPPLY_PROP_CYCLE_COUNT,
         POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE,
 	/* BobihLee - C1N-667 - [FTM] Supprt FTM command */
 	POWER_SUPPLY_PROP_INPUT_CURRENT_MAX,
@@ -1397,9 +1460,6 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SW_JEITA_ENABLED:
 		val->intval = chg->sw_jeita_enabled;
 		break;
-	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		rc = smblib_get_prop_batt_voltage_now(chg, val);
-		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		val->intval = get_client_vote(chg->fv_votable,
 				BATT_PROFILE_VOTER);
@@ -1411,9 +1471,6 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 		val->intval = get_client_vote_locked(chg->fv_votable,
 				QNOVO_VOTER);
 		break;
-	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		rc = smblib_get_prop_batt_current_now(chg, val);
-		break;
 	case POWER_SUPPLY_PROP_CURRENT_QNOVO:
 		val->intval = get_client_vote_locked(chg->fcc_votable,
 				QNOVO_VOTER);
@@ -1422,44 +1479,7 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 		val->intval = get_client_vote(chg->fcc_votable,
 					      BATT_PROFILE_VOTER);
 		break;
-	case POWER_SUPPLY_PROP_TEMP:
-		rc = smblib_get_prop_batt_temp(chg, val);
-// {{
-		if(chg->sys_ignore_temp_sts == -1)
-		{
-			chg->sys_pre_temp = val->intval;
-			chg->sys_ignore_temp_sts = 0;
-			if(rc == -EINVAL)
-				chg->sys_ignore_temp_sts = -1;
-		}
-		else 
-		{
-			if((val->intval <600) && (val->intval > -200))
-			{
-				chg->sys_pre_temp = val->intval;
-				chg->sys_ignore_temp_sts =0;
-			}
-			else
-			{
-				if(chg->sys_ignore_temp_sts < IGNORE_NUMBER)
-				{
-					if(abs(chg->sys_pre_temp - val->intval) > IGNORE_DIFF)
-					{
-						 val->intval = chg->sys_pre_temp;
-						 chg->sys_ignore_temp_sts = chg->sys_ignore_temp_sts + 1;
-						 if(chg->sys_ignore_temp_sts > 10)
-						 	pr_err("chg->sys_ignore_temp_sts=%d\n", chg->sys_ignore_temp_sts);
-					}
-					else
-					{
-						chg->sys_pre_temp = val->intval;
-						chg->sys_ignore_temp_sts =0;
-					}
-				}
-			}		
-		}
-// }}
-		break;
+
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
 		break;
@@ -1484,9 +1504,56 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 		val->intval = 0;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
-		rc = smblib_get_prop_batt_charge_counter(chg, val);
+	case POWER_SUPPLY_PROP_CHARGE_FULL:
+	case POWER_SUPPLY_PROP_CYCLE_COUNT:
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+	case POWER_SUPPLY_PROP_TEMP:
+		rc = smblib_get_prop_from_bms(chg, psp, val);
+// {{
+		if(psp == POWER_SUPPLY_PROP_TEMP)
+		{
+			if(chg->sys_ignore_temp_sts == -1)
+			{
+				chg->sys_pre_temp = val->intval;
+				chg->sys_ignore_temp_sts = 0;
+				if(rc == -EINVAL)
+					chg->sys_ignore_temp_sts = -1;
+			}
+			else 
+			{
+				if((val->intval <600) && (val->intval > -200))
+				{
+					chg->sys_pre_temp = val->intval;
+					chg->sys_ignore_temp_sts =0;
+				}
+				else
+				{
+					if(chg->sys_ignore_temp_sts < IGNORE_NUMBER)
+					{
+						if(abs(chg->sys_pre_temp - val->intval) > IGNORE_DIFF)
+						{
+							 val->intval = chg->sys_pre_temp;
+							 chg->sys_ignore_temp_sts = chg->sys_ignore_temp_sts + 1;
+							 if(chg->sys_ignore_temp_sts > 10)
+							 	pr_err("chg->sys_ignore_temp_sts=%d\n", chg->sys_ignore_temp_sts);
+						}
+						else
+						{
+							chg->sys_pre_temp = val->intval;
+							chg->sys_ignore_temp_sts =0;
+						}
+					}
+				}		
+			}
+		}
+// }}
+
 		break;
-        case POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE:
+	case POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE:
+		val->intval = chg->fcc_stepper_mode;
+		break;
+	case POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE:
 		rc = smblib_get_prop_safety_timer_enable(chg, val);
 		break;
 	/* Bobihlee - C1N-667 - [FTM] Supprt FTM command */
@@ -1674,7 +1741,7 @@ static int smb2_init_batt_psy(struct smb2 *chip)
  * VBUS REGULATOR REGISTRATION *
  ******************************/
 
-struct regulator_ops smb2_vbus_reg_ops = {
+static struct regulator_ops smb2_vbus_reg_ops = {
 	.enable = smblib_vbus_regulator_enable,
 	.disable = smblib_vbus_regulator_disable,
 	.is_enabled = smblib_vbus_regulator_is_enabled,
@@ -1716,7 +1783,7 @@ static int smb2_init_vbus_regulator(struct smb2 *chip)
  * VCONN REGULATOR REGISTRATION *
  ******************************/
 
-struct regulator_ops smb2_vconn_reg_ops = {
+static struct regulator_ops smb2_vconn_reg_ops = {
 	.enable = smblib_vconn_regulator_enable,
 	.disable = smblib_vconn_regulator_disable,
 	.is_enabled = smblib_vconn_regulator_is_enabled,
@@ -2135,6 +2202,18 @@ static int smb2_init_hw(struct smb2 *chip)
 		return rc;
 	}
 
+	/*
+	 * allow DRP.DFP time to exceed by tPDdebounce time.
+	 */
+	rc = smblib_masked_write(chg, TAPER_TIMER_SEL_CFG_REG,
+				TYPEC_DRP_DFP_TIME_CFG_BIT,
+				TYPEC_DRP_DFP_TIME_CFG_BIT);
+	if (rc < 0) {
+		dev_err(chg->dev, "Couldn't configure DRP.DFP time rc=%d\n",
+			rc);
+		return rc;
+	}
+
 	/* configure float charger options */
 	switch (chip->dt.float_option) {
 	case 1:
@@ -2289,7 +2368,8 @@ static int smb2_chg_config_init(struct smb2 *chip)
 	switch (pmic_rev_id->pmic_subtype) {
 	case PMI8998_SUBTYPE:
 		chip->chg.smb_version = PMI8998_SUBTYPE;
-		chip->chg.wa_flags |= BOOST_BACK_WA | QC_AUTH_INTERRUPT_WA_BIT;
+		chip->chg.wa_flags |= BOOST_BACK_WA | QC_AUTH_INTERRUPT_WA_BIT
+				| TYPEC_PBS_WA_BIT;
 		if (pmic_rev_id->rev4 == PMI8998_V1P1_REV4) /* PMI rev 1.1 */
 			chg->wa_flags |= QC_CHARGER_DETECTION_WA_BIT;
 		if (pmic_rev_id->rev4 == PMI8998_V2P0_REV4) /* PMI rev 2.0 */
@@ -2304,7 +2384,8 @@ static int smb2_chg_config_init(struct smb2 *chip)
 		break;
 	case PM660_SUBTYPE:
 		chip->chg.smb_version = PM660_SUBTYPE;
-		chip->chg.wa_flags |= BOOST_BACK_WA | OTG_WA;
+		chip->chg.wa_flags |= BOOST_BACK_WA | OTG_WA | OV_IRQ_WA_BIT
+				| TYPEC_PBS_WA_BIT;
 		chg->param.freq_buck = pm660_params.freq_buck;
 		chg->param.freq_boost = pm660_params.freq_boost;
 		chg->chg_freq.freq_5V		= 650;
@@ -2737,6 +2818,7 @@ static int smb2_probe(struct platform_device *pdev)
 	chg->dev = &pdev->dev;
 	chg->param = v1_params;
 	chg->debug_mask = &__debug_mask;
+	chg->try_sink_enabled = &__try_sink_enabled;
 	chg->weak_chg_icl_ua = &__weak_chg_icl_ua;
 	chg->mode = PARALLEL_MASTER;
 	chg->irq_info = smb2_irqs;
@@ -2916,7 +2998,8 @@ static int smb2_probe(struct platform_device *pdev)
 
 	rc = device_create_file(&pdev->dev, &dev_attr_otg_status); //add for Power Monitor for OTG
 	rc = device_create_file(&pdev->dev, &dev_attr_type_c_status); //add for FAP usb resistance
-
+	rc = device_create_file(&pdev->dev, &dev_attr_lcm_status); //add for lcm status
+	
 	if(chg->fih_lcm_on_off_cur_control)
 	{
 		device_create_file(&pdev->dev, &dev_attr_fih_qc_control_fun_fun);
@@ -2960,9 +3043,9 @@ static int smb2_remove(struct platform_device *pdev)
 // add for H/L temp charging limit reached UI
 	if(chg->fih_jeita_full_capacity_enable == 1)
 		device_remove_file(&pdev->dev, &dev_attr_jeita_full_capacity);
-
 	device_remove_file(&pdev->dev, &dev_attr_otg_status); //add for Power Monitor for OTG
 	device_remove_file(&pdev->dev, &dev_attr_type_c_status); //add for FAP usb resistance
+	device_remove_file(&pdev->dev, &dev_attr_lcm_status); //add for lcm status
 	
 	power_supply_unregister(chg->batt_psy);
 	power_supply_unregister(chg->usb_psy);

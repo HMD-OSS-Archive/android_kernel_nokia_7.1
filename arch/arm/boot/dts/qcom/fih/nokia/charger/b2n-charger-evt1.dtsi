@@ -52,7 +52,7 @@
 	fih_jeita_full_capacity_warm_temp = <450>;
 	fih,update_battery_status = <1>;
 	qcom,float-option = <1>;
-	fih,lcm-on-off-cur-control;
+//	fih,lcm-on-off-cur-control;
 	fih,force_change_icl = <1>;
 //	qcom,jeita-fv-comp-cool = <0>;		/* 4.4V = 4.4V - 0.0V */
 //	qcom,jeita-cc-comp-cool = <750000>;	/* 1100mA = 1850mA - 1500mA */

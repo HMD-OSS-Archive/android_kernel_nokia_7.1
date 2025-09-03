@@ -236,7 +236,7 @@ extern bool RawDataTotalTestResult;
 extern bool LCDTotalTestResult;
 #define FOCAL_TEST_DEBUG_EN     1
 #if (FOCAL_TEST_DEBUG_EN)
-#define FTS_TEST_DBG(fmt, args...) do {printk(KERN_ERR "[FTS] [TEST]%s. line: %d.  "fmt"\n",  __FUNCTION__, __LINE__, ##args);} while (0)
+#define FTS_TEST_DBG(fmt, args...) do {printk(KERN_DEBUG "[FTS] [TEST]%s. line: %d.  "fmt"\n",  __FUNCTION__, __LINE__, ##args);} while (0)
 #define FTS_TEST_FUNC_ENTER() printk(KERN_ERR "[FTS][TEST]%s: Enter(%d)\n", __func__, __LINE__)
 #define FTS_TEST_FUNC_EXIT()  printk(KERN_ERR "[FTS][TEST]%s: Exit(%d)\n", __func__, __LINE__)
 #else
